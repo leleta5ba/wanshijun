@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>英语单词朗读器 V0.5</title>
+  <style>
+    body {
+      font-family: "Microsoft YaHei", sans-serif;
+      max-width: 850px;
+      margin: 20px auto;
+      padding: 15px;
+      background: #f9f9f9;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+    }
+    .btn {
+      padding: 10px 15px;
+      margin: 5px;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn:disabled {
+      background: #bdc3c7;
+      cursor: not-allowed;
+    }
+    .nav-btn {
+      background: #9b59b6;
+    }
+    .controls {
+      text-align: center;
+      margin: 15px 0;
+    }
+    .config-row {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 8px 0;
+    }
+    .config-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: normal;
+    }
+    .card {
+      background: white;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+    .label {
+      font-weight: bold;
+      color: #2980b9;
+      margin-top: 10px;
+      display: block;
+    }
+    #progress, #status {
+      text-align: center;
+      margin: 8px 0;
+      font-size: 15px;
+    }
+    #status {
+      color: #e74c3c;
+      font-style: italic;
+    }
+    #fileInfo {
+      margin-top: 8px;
+      font-size: 14px;
+      color: #7f8c8d;
+    }
+    input[type="number"] {
+      width: 60px;
+      padding: 4px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>英语单词朗读器 V0.5</h1>
+
+  <div class="controls">
+    <input type="file" id="fileInput" accept=".txt" style="display:none" />
+    <button onclick="document.getElementById('fileInput').click()">📎 选择 TXT 文件</button>
+    <button id="downloadBtn">📥 下载示例</button>
+    <div id="fileInfo">未加载文件</div>
+  </div>
+
+  <div class="config-row">
+    <div class="config-item">
+      <label>重复次数:</label>
+      <input id="repeat" type="number" value="3" min="1" max="10" />
+    </div>
+    <div class="config-item">
+      <label>停顿(秒):</label>
+      <input id="pause" type="number" value="2" min="0" max="30" />
+    </div>
+    <div class="config-item">
+      <label>语速:</label>
+      <input id="rate" type="number" value="1.0" step="0.1" min="0.2" max="2.0" />
+    </div>
+  </div>
+
+  <div class="config-row">
+    <div class="config-item">
+      <label>从第</label>
+      <input id="startIndex" type="number" value="1" min="1" />
+      <label>项开始</label>
+    </div>
+    <div class="config-item">
+      <label>到第</label>
+      <input id="endIndex" type="number" value="99" min="1" />
+      <label>项结束</label>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="prevBtn" class="nav-btn" disabled>⏮ 上一个</button>
+    <button id="startBtn">▶ 开始朗读</button>
+    <button id="stopBtn" disabled>⏹ 停止</button>
+    <button id="nextBtn" class="nav-btn" disabled>⏭ 下一个</button>
+    <button id="resetBtn">🔄 重置</button>
+  </div>
+
+  <div id="progress">准备就绪</div>
+  <div id="status"></div>
+
+  <div class="card">
+    <span class="label">英文单词：</span>
+    <div id="word">-</div>
+    <span class="label">中文意思：</span>
+    <div id="chinese">-</div>
+    <span class="label">拼读（仅单词）：</span>
+    <div id="spelling">-</div>
+    <span class="label">英文例句：</span>
+    <div id="sentence">-</div>
+  </div>
+
+  <script>
+    let allWords = [];
+    let currentWords = [];
+    let isRunning = false;
+    let currentIndex = 0;
+    let currentFileHash = '';
+    const PROGRESS_KEY = 'vocab_reader_v05';
+
+    function hash(str) {
+      let h = 0;
+      for (let i = 0; i < str.length; i++) {
+        h = Math.imul(31, h) + str.charCodeAt(i);
+      }
+      return h.toString();
+    }
+
+    function spell(word) {
+      return word.split(' ').map(p => p.replace(/[^a-zA-Z]/g, '').split('').join(' ').toUpperCase()).join(' ... ');
+    }
+
+    function speak(text, rate) {
+      return new Promise((resolve) => {
+        if (!text || !window.speechSynthesis) {
+          resolve();
+          return;
+        }
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'en-US';
+        u.rate = rate;
+        u.onend = () => resolve();
+        speechSynthesis.speak(u);
+      });
+    }
+
+    function saveProgress(hash, index) {
+      try {
+        localStorage.setItem(PROGRESS_KEY, JSON.stringify({ fileHash: hash, index: index }));
+      } catch (e) {}
+    }
+
+    function loadProgress(hash) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(PROGRESS_KEY)) || {};
+        return saved.fileHash === hash ? (saved.index || 0) : 0;
+      } catch (e) {
+        return 0;
+      }
+    }
+
+    function displayWord(index) {
+      if (index < 0 || index >= currentWords.length) return;
+      currentIndex = index;
+      const [en, zh, sent] = currentWords[index];
+      document.getElementById('word').textContent = en;
+      document.getElementById('chinese').textContent = zh;
+      document.getElementById('spelling').textContent = spell(en);
+      document.getElementById('sentence').textContent = sent;
+      updateNavButtons();
+    }
+
+    function updateNavButtons() {
+      document.getElementById('prevBtn').disabled = (currentIndex <= 0);
+      document.getElementById('nextBtn').disabled = (currentIndex >= currentWords.length - 1);
+    }
+
+    // ✅ 修复：不再重置 currentIndex
+    function applyRange(shouldResetIndex = true) {
+      const start = parseInt(document.getElementById('startIndex').value) || 1;
+      const end = parseInt(document.getElementById('endIndex').value) || allWords.length;
+      const total = allWords.length;
+      const s = Math.max(1, Math.min(start, total));
+      const e = Math.max(s, Math.min(end, total));
+      currentWords = allWords.slice(s - 1, e);
+      
+      // ✅ 仅在需要时重置索引（如加载新文件或重置）
+      if (shouldResetIndex) {
+        currentIndex = 0;
+      } else {
+        // 确保 currentIndex 在有效范围内
+        currentIndex = Math.max(0, Math.min(currentIndex, currentWords.length - 1));
+      }
+      
+      if (currentWords.length > 0) {
+        displayWord(currentIndex);
+      } else {
+        ["word", "chinese", "spelling", "sentence"].forEach(id => document.getElementById(id).textContent = "-");
+      }
+      updateNavButtons();
+      document.getElementById('progress').textContent = `范围: ${s}–${e} / 共 ${total} 项`;
+    }
+
+    // 下载示例
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+      const lines = [
+        "porter|搬运工|The porter carried my suitcase.",
+        "suite|套房|They booked a suite.",
+        "twin room|双床房|We prefer twin beds.",
+        "check in|办理入住|Please check in.",
+        "boarding|登机|Boarding will start soon."
+      ];
+      const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = '示例单词表.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    });
+
+    // 加载文件
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const text = ev.target.result.replace(/^\uFEFF/, '');
+        allWords = [];
+        const lines = text.split('\n');
+        for (let line of lines) {
+          line = line.trim();
+          if (!line || line.startsWith('#')) continue;
+          const parts = line.split('|').map(p => p.trim());
+          if (parts.length >= 3) {
+            allWords.push([parts[0], parts[1], parts[2]]);
+          } else if (parts.length === 2) {
+            allWords.push([parts[0], parts[1], parts[0] + '.']);
+          } else if (parts[0]) {
+            allWords.push([parts[0], '', parts[0] + '.']);
+          }
+        }
+        currentFileHash = hash(text);
+        const startInput = document.getElementById('startIndex');
+        const endInput = document.getElementById('endIndex');
+        startInput.value = 1;
+        endInput.value = allWords.length;
+        endInput.max = allWords.length;
+        startInput.max = allWords.length;
+        applyRange(true); // ✅ 加载新文件时重置
+        document.getElementById('fileInfo').textContent = `✅ 成功加载 ${allWords.length} 个单词`;
+        document.getElementById('startBtn').disabled = false;
+      };
+      reader.readAsText(file);
+    });
+
+    // 导航
+    document.getElementById('prevBtn').addEventListener('click', () => {
+      if (currentIndex > 0) {
+        displayWord(currentIndex - 1);
+      }
+    });
+
+    document.getElementById('nextBtn').addEventListener('click', () => {
+      if (currentIndex < currentWords.length - 1) {
+        displayWord(currentIndex + 1);
+      }
+    });
+
+    function resetProgress() {
+      applyRange(true); // ✅ 重置时重置索引
+      document.getElementById('status').textContent = "🔄 已重置";
+    }
+
+    function stopReading() {
+      isRunning = false;
+      if (window.speechSynthesis) speechSynthesis.cancel();
+      document.getElementById('startBtn').disabled = false;
+      document.getElementById('stopBtn').disabled = true;
+      saveProgress(currentFileHash, currentIndex);
+    }
+
+    // ✅ 核心修复：开始朗读时不重置范围
+    async function startReading() {
+      if (isRunning || currentWords.length === 0) return;
+      isRunning = true;
+      document.getElementById('startBtn').disabled = true;
+      document.getElementById('stopBtn').disabled = false;
+
+      // ✅ 关键：不再调用 applyRange()，保留 currentIndex
+      const repeat = parseInt(document.getElementById('repeat'). value) || 3;
+      const pause = parseInt(document.getElementById('pause').value) || 2;
+      const rate = parseFloat(document.getElementById('rate').value) || 1.0;
+      const total = currentWords.length;
+
+      // 从 currentIndex 开始
+      for (let i = currentIndex; i < total && isRunning; i++) {
+        currentIndex = i;
+        saveProgress(currentFileHash, i);
+
+        const [en, zh, sent] = currentWords[i];
+        const spelling = spell(en);
+
+        for (let r = 0; r < repeat && isRunning; r++) {
+          document.getElementById('word').textContent = en;
+          document.getElementById('chinese').textContent = zh;
+          document.getElementById('spelling').textContent = spelling;
+          document.getElementById('sentence').textContent = sent;
+          document.getElementById('progress').textContent = `第 ${i + 1}/${total} 项 · 第 ${r + 1}/${repeat} 次`;
+
+          await speak(en, rate);
+          if (!isRunning) return;
+
+          await speak(spelling, rate);
+          if (!isRunning) return;
+
+          await speak(sent, rate);
+          if (!isRunning) return;
+
+          document.getElementById('status').textContent = `⏸️ 暂停 ${pause} 秒...`;
+          await new Promise(res => setTimeout(res, pause * 1000));
+        }
+      }
+
+      if (isRunning) {
+        document.getElementById('progress').textContent = "✅ 朗读完成！";
+        saveProgress(currentFileHash, 0);
+      }
+      stopReading();
+    }
+
+    // 按钮
+    document.getElementById('startBtn').addEventListener('click', startReading);
+    document.getElementById('stopBtn').addEventListener('click', stopReading);
+    document.getElementById('resetBtn').addEventListener('click', resetProgress);
+
+    // 范围输入变化（仅更新范围，不重置 currentIndex）
+    const startInput = document.getElementById('startIndex');
+    const endInput = document.getElementById('endIndex');
+    [startInput, endInput].forEach(input => {
+      input.addEventListener('change', () => {
+        if (!isRunning && allWords.length > 0) {
+          const total = allWords.length;
+          input.value = Math.max(1, Math.min(input.value, total));
+          endInput.value = Math.max(startInput.value, Math.min(endInput.value, total));
+          startInput.max = total;
+          endInput.max = total;
+          applyRange(false); // ✅ 不重置 currentIndex
+        }
+      });
+    });
+
+    document.getElementById('progress').textContent = "📁 请加载 TXT（格式：英文|中文|英文例句）";
+  </script>
+</body>
+</html>
