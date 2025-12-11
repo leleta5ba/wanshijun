@@ -1,0 +1,93 @@
+﻿porter|搬运工|The porter carried my heavy suitcase to my room.
+suite|套房|They booked a luxurious suite in the hotel.
+twin room|双床房|We prefer a twin room so that we can have separate beds.
+single room|单人房|He reserved a single room for himself.
+laundry service|洗衣服务|The hotel offers laundry service for guests.
+reception|前台|Go to the reception and ask for your room key.
+ticket office|售票处|You can buy train tickets at the ticket office.
+check out|退房|We need to check out before 12 o'clock.
+check in|办理入住|Please check in at the front desk when you arrive at the hotel.
+make a booking|预订|I made a booking for a flight to Paris next week.
+car hire|租车|We decided to hire a car to explore the city.
+luggage locker|行李寄存柜|You can store your luggage in the luggage locker.
+transit|中转|During the transit, we had a short stopover in Dubai.
+cash|现金|I need some cash for small purchases.
+customs officer|海关官员|The customs officer checked my luggage carefully.
+immigration officer|移民局官员|The immigration officer asked me some questions about my purpose of visit.
+security officer|保安人员|The security officer is responsible for maintaining order in the airport.
+customs inspection|海关检查|All luggage is subject to customs inspection.
+security inspection|安检|We have to go through security inspection before boarding the plane.
+bathroom|洗手间|Excuse me, where is the bathroom?
+purpose of visit|访问目的|My purpose of visit is to attend a business conference.
+stay|停留|We plan to stay in this city for three days.
+return ticket|往返票|I bought a return ticket to save money.
+declaration card|申报单|Fill out the declaration card, please.
+immigration card|入境卡|You need to complete the immigration card upon arrival.
+passport control|护照检查|Wait in line at the passport control.
+gate change|登机口变更|Oh no, there's a gate change for our flight.
+cancel|取消|The flight was cancelled due to bad weather.
+delay|延误|Our train was delayed for an hour.
+closed|关门|The shop is closed on Sundays.
+boarding|登机|Boarding will start in 15 minutes.
+on time|准时|The train arrived on time.
+status|航班状态|What's the status of my flight?
+have a safe trip|一路平安|Have a safe trip! I'll miss you.
+transfer passengers|中转乘客|Transfer passengers should follow the signs.
+baggage allowance|行李额度|The baggage allowance for this flight is 20 kilograms.
+luggage scale|行李秤|Put your luggage on the luggage scale to check its weight.
+baggage inspection|行李检查|Baggage inspection is necessary for safety reasons.
+excess baggage charge|超重费|I had to pay an excess baggage charge because my luggage was overweight.
+conveyor belt|传送带|Watch your luggage as it moves along the conveyor belt.
+free cell phone recharge|免费手机充电|The airport provides free cell phone recharge service.
+wireless internet access|无线网络|Most hotels offer wireless internet access.
+lost and found|失物招领处|I lost my wallet. I should go to the lost and found.
+toilet|厕所|I need to find a toilet. I'm in a hurry.
+time table|时刻表|Check the train time table to see when the next train leaves.
+vip lounge|贵宾休息室|VIP passengers can wait in the VIP lounge.
+vip luggage|贵宾行李|There is a special handling for VIP luggage.
+luggage rechecks|行李二次安检|Some flights require luggage rechecks.
+smoking lounge|吸烟室|There is a smoking lounge on the second floor.
+luggage carts|行李车|Use the luggage carts to carry your bags.
+shuttle bus|班车|Take the shuttle bus to the hotel.
+moving sidewalk|自动步道|Walk on the moving sidewalk to get to the gate faster.
+flight number|航班号|What's your flight number?
+duty free shop|免税店|I bought some perfume at the duty free shop.
+destination|目的地|Our destination is Beijing.
+nothing to declare|无申报物品|I have nothing to declare.
+line up|排队|Line up here to wait for your turn.
+economy class|经济舱|I usually fly economy class because it's cheaper.
+business class|商务舱|Business class passengers enjoy more services.
+first class|头等舱|First class is the most luxurious way to travel by plane.
+over weight|超重|My luggage is overweight. I have to remove some items.
+layover|中转停留|We had a long layover in Frankfurt.
+connecting flight|中转航班|I have a connecting flight to catch.
+arrival|到达|The arrival time of the flight is 9 o'clock.
+departure|出发|Check the departure time on the board.
+carry on luggage|随身行李|You can take your carry on luggage onto the plane.
+check in luggage|托运行李|Remember to check in your luggage at the counter.
+over head storage|头顶行李架|Put your small bag in the overhead storage.
+flight attendants|空乘人员|The flight attendants are very helpful.
+stewardess|空姐|The stewardess served us drinks during the flight.
+check in counter|值机柜台|Go to the check in counter to get your boarding pass.
+customs|海关|The customs procedures are quite strict.
+information board|信息显示屏|Check the information board for flight details.
+airline|航空公司|Which airline are you flying with?
+taxi pick up point|出租车乘车点|Wait at the taxi pick up point outside the airport.
+emergency exit|紧急出口|Know the location of the emergency exit in case of an emergency.
+aisle seat|靠过道座位|I prefer an aisle seat so that I can stretch my legs.
+windows seat|靠窗座位|She always chooses a window seat to enjoy the view.
+baggage claim|行李提取处|Go to the baggage claim area to get your luggage.
+arrival lounge|到达大厅|Wait for your friends in the arrival lounge.
+departure lounge|候机大厅|We sat in the departure lounge waiting for our flight.
+information desk|问讯处|Ask the staff at the information desk for help.
+currency exchange|货币兑换|I need to go to the currency exchange to change some money.
+security check|安检|The security check takes some time.
+transfer|转机|I need to transfer to another flight in Shanghai.
+terminal|航站楼|The new terminal is very modern.
+international flight|国际航班|This is an international flight to London.
+visa|签证|I need to apply for a visa before going to that country.
+passport|护照|Don't forget to bring your passport when you travel abroad.
+self check in kiosk|自助值机亭|You can use the self check in kiosk to save time.
+domestic flight|国内航班|I often take domestic flights for business trips.
+nationality|国籍|What's your nationality? I'm Chinese.
+tip|小费|It's common to give a tip to the waiter in some countries.
