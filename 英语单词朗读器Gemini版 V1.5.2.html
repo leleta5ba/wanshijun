@@ -1,0 +1,1136 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>英语单词朗读器 V1.5.2 (百度 MD5 签名稳定版)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<style>
+/* 样式保持 V1.5.0 */
+body{
+  font-family:"Segoe UI", "Microsoft YaHei", sans-serif;
+  max-width:960px;
+  margin:0 auto; 
+  padding:20px 15px;
+  background:#ebf0f5; 
+  color:#333;
+  line-height:1.6;
+}
+h1{text-align:center;color:#1e88e5;margin-bottom:25px;font-weight: 600;}
+
+.container{max-width:920px;margin:0 auto;}
+.card{
+  background:white;
+  padding:25px;
+  border-radius:15px;
+  box-shadow:0 6px 18px rgba(0,0,0,0.1); 
+  margin:20px 0;
+  transition: transform 0.3s ease;
+}
+.card:hover {
+  transform: translateY(-2px);
+}
+
+.controls{text-align:center;margin:25px 0;}
+.config-section {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.config-row{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:20px;
+  align-items:center;
+}
+.config-item{display:flex;align-items:center;gap:10px;white-space:nowrap;font-size: 15px;}
+
+.btn{padding:12px 22px;margin:5px;border:none;border-radius:10px;color:white;cursor:pointer;font-size:16px;transition:.3s;}
+.btn:hover{opacity:0.9;box-shadow: 0 4px 10px rgba(0,0,0,0.2);}
+.btn:disabled{opacity:0.5;cursor:not-allowed;transform:none;box-shadow: none;}
+.primary{background:#1e88e5;} 
+.success{background:#43a047;} 
+.danger{background:#e53935;} 
+.warning{background:#ffb300;} 
+.purple{background:#8e24aa;} 
+.green-btn{background:#00897b;} 
+.teal-btn{background:#00bcd4;} 
+
+#progress{text-align:center;font-weight:bold;font-size:18px;color:#00897b;margin:15px 0;}
+#status{text-align:center;color:#ff9800;height:26px;font-weight:bold;}
+
+.label{font-weight:600;color:#1e88e5;margin:15px 0 5px;display:block;font-size: 16px;}
+#word,#spelling,#chinese,#sentence,#sentence_zh {
+  font-size:20px;
+  padding:15px;
+  border-radius:10px;
+  min-height:28px;
+  background:#f7f9fb; 
+  margin:4px 0;
+  width: calc(100% - 30px);
+  box-sizing: border-box;
+  border: 1px solid #ddd;
+}
+#word { font-size: 28px; font-weight: bold; background: #e0f7fa;} 
+
+#dictationInput {
+  font-size: 20px;
+  padding: 15px;
+  border-radius: 10px;
+  background: #fff;
+  border: 2px solid #1e88e5;
+  width: calc(100% - 30px);
+  box-sizing: border-box;
+  min-height: 80px; 
+  text-align: left;
+  resize: vertical;
+}
+
+.current-highlight{background:#fff8e1 !important;animation:pulse 2s infinite;}
+
+input[type=range] {
+  -webkit-appearance: none;
+  width: 100px;
+  height: 8px;
+  background: #ddd;
+  border-radius: 5px;
+  margin: 0 5px;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #1e88e5;
+  cursor: pointer;
+}
+
+/* 模态框样式 */
+.modal { display: none; position: fixed; z-index: 10; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+.modal-content { 
+    background-color: #fefefee0; 
+    margin: 10% auto; 
+    padding: 25px; 
+    border: 1px solid #888; 
+    width: 80%; 
+    max-width: 600px; 
+    border-radius: 12px; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
+    animation: slideIn 0.3s ease-out;
+}
+#apiConfig {
+  padding: 15px;
+  border: 1px dashed #e0e0e0;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+</style>
+</head>
+<body>
+<h1>英语单词朗读器 V1.5.2 (百度 MD5 签名稳定版)</h1>
+
+<div class="container">
+  <div class="card controls">
+    <input type="file" id="fileInput" accept=".txt" multiple style="display:none">
+    <button class="btn primary" id="localBtn">选择本地文件 (多选)</button>
+    
+    <input type="text" id="urlInput" placeholder="或粘贴网络TXT地址 (需支持CORS)">
+    <button class="btn primary" id="loadUrlBtn">加载网络文件</button>
+    
+    <button class="btn teal-btn" id="formatConvertBtn">格式转换 & 智能翻译</button>
+    <button class="btn warning" id="downloadBtn">示例文件</button>
+  </div>
+
+  <div id="fileListContainer" class="card">
+    <div style="font-weight: 600; margin-bottom: 15px; color: #1e88e5; font-size: 16px;">📂 已加载文件列表 (请选择要操作的文件)</div>
+    <div id="fileList">未加载任何文件</div>
+    <div id="activeFileInfo" style="text-align:center;color:#666;margin-top:15px;font-size:15px; border-top: 1px solid #eee; padding-top: 10px;">未选择操作文件</div>
+  </div>
+
+  <div class="card config-section">
+    <div style="font-weight: 600; margin-bottom: 10px; color: #1e88e5; font-size: 16px;">⚙️ 朗读全局设置</div>
+    <div class="config-row">
+      <div class="config-item"><label>重复次数:</label><input id="repeat" type="number" value="3" min="1" max="10"></div>
+      <div class="config-item"><label>停顿秒:</label><input id="pause" type="number" value="2" min="0" max="30" step="0.5"></div>
+      <div class="config-item"><label>语速:</label><input id="rate" type="number" value="1.0" step="0.1" min="0.3" max="3"></div>
+      <div class="config-item">
+        <label>音色:</label>
+        <select id="voiceSelect"><option>加载中…</option></select>
+      </div>
+    </div>
+    
+    <div class="config-row" style="border-top: 1px dotted #eee; padding-top: 10px; justify-content: flex-start;">
+        <div class="config-item" style="flex-grow: 1;"><label style="color: #8e24aa;">自定义音色名 (高级):</label><input id="customVoiceName" type="text" placeholder="如 Google US English"></div>
+        <div style="font-size: 12px; color: #999; margin-top: 5px; flex-basis: 100%; text-align: left;">* 音色名称请在浏览器控制台查看 `speechSynthesis.getVoices()` 结果。</div>
+    </div>
+    
+    <div class="config-row" style="border-top: 1px dashed #eee; padding-top: 10px; justify-content: space-around;">
+        <div class="config-item">
+            <label style="color: #00897b;">🗣️ 拼读语速:</label>
+            <input type="range" id="spellRateSlider" min="0.1" max="5.0" step="0.1" value="1.5">
+            <span id="spellRateValue">1.5</span>
+        </div>
+        <div class="config-item">
+            <label style="color: #00897b;">🔊 拼读音量:</label>
+            <input type="range" id="spellVolumeSlider" min="0.1" max="1.0" step="0.1" value="0.9">
+            <span id="spellVolumeValue">0.9</span>
+        </div>
+    </div>
+
+    <div style="font-weight: 600; margin-top: 15px; margin-bottom: 10px; color: #1e88e5; font-size: 16px; border-top: 1px dashed #eee; padding-top: 10px;">📚 朗读/默写模式设置</div>
+    <div class="config-row">
+      <div class="config-item"><input type="checkbox" id="readChinese"><label for="readChinese">朗读中文释义 (仅朗读模式)</label></div>
+      <div class="config-item">
+        <label>朗读模式:</label>
+        <select id="readMode">
+          <option value="full">完整模式（单词-拼读-释义-例句）</option>
+          <option value="wordSpell" selected>仅单词+拼读（推荐背词）</option>
+          <option value="wordOnly">仅单词</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  
+  <div class="card config-section" id="dictationConfig">
+    <div style="font-weight: 600; margin-bottom: 10px; color: #1e88e5; font-size: 16px;">📝 默写模式设置 (默写重复次数使用“重复次数”设置)</div>
+    <div class="config-row">
+      <div class="config-item">
+        <label>提示方式:</label>
+        <select id="dictationPrompt">
+          <option value="chinese">朗读中文释义</option>
+          <option value="english">朗读英文单词</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="config-row" style="margin-bottom: 20px; border-bottom: 1px dashed #eee; padding-bottom: 15px;">
+      <label>从第</label> <input id="startIndex" type="number" min="1" style="width:80px"> 项
+      <label>到第</label> <input id="endIndex" type="number" min="1" style="width:80px"> 项
+    </div>
+    
+    <button id="prevBtn" class="btn purple" disabled>上一个</button>
+    <button id="startReadingBtn" class="btn success" style="padding:14px 20px;font-size:19px">开始朗读</button>
+    <button id="startDictationBtn" class="btn green-btn" style="padding:14px 20px;font-size:19px">开始默写</button>
+    <button id="stopBtn" class="btn danger" disabled>停止</button>
+    <button id="nextBtn" class="btn purple" disabled>下一个</button>
+    <button id="resetBtn" class="btn warning">重置进度</button>
+    <button id="showResultsBtn" class="btn teal-btn" style="display:none;">查看结果</button>
+  </div>
+
+  <div id="progress">请先选择要操作的文件</div>
+  <div id="status"></div>
+
+  <div class="card">
+    <div class="label">英文单词</div><div id="word">-</div>
+    <div class="label">拼读（仅单词）</div><div id="spelling">-</div>
+    <div class="label">中文释义</div><div id="chinese">-</div>
+    <div class="label">英文例句</div><div id="sentence">-</div>
+    <div class="label">例句中文</div><div id="sentence_zh">-</div>
+
+    <div id="dictationArea" style="display:none;">
+      <div class="label">请输入单词:</div>
+      <textarea id="dictationInput" placeholder="输入单词后按 Enter 或点击完成"></textarea>
+      <div style="text-align: center; margin-top: 15px;">
+        <button id="checkBtn" class="btn green-btn">完成</button>
+        <button id="skipBtn" class="btn danger">下一个</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="resultsCard" style="display:none;">
+    <div style="font-weight: 600; margin-bottom: 15px; color: #1e88e5; font-size: 16px;">✅ 默写结果 (最近记录)</div>
+    <div id="dictationSummary"></div> 
+    <div id="dictationResult"></div>
+    <div style="text-align: center; margin-top: 15px;">
+      <button id="clearResultsBtn" class="btn danger">清除本次结果</button>
+    </div>
+  </div>
+
+</div>
+
+<div id="convertModal" class="modal">
+  <div class="modal-content">
+    <span class="close-btn" id="closeConvertModal">&times;</span>
+    <h2>格式转换 & 智能翻译工具</h2>
+    <p>选择要转换为标准五项格式的文件，**请务必填写百度 API 密钥，否则无法自动补全翻译。**</p>
+    
+    <div id="apiConfig">
+        <p style="color: #e53935; font-weight: bold; margin-top: 0;">⚠️ 百度翻译 API 配置 (用于自动补全例句中文)</p>
+        <div style="margin-bottom: 10px;">
+            <label for="baiduAppId">App ID:</label>
+            <input type="text" id="baiduAppId" placeholder="粘贴你的百度翻译 App ID" style="width: 80%;">
+        </div>
+        <div>
+            <label for="baiduKey">Secret Key:</label>
+            <input type="text" id="baiduKey" placeholder="粘贴你的百度翻译 Secret Key" style="width: 80%;">
+        </div>
+        <p style="font-size: 12px; color: #666;">* 翻译需调用外部 API，请确保你的 App ID 和 Key 有效。</p>
+    </div>
+
+    <div style="font-size: 14px; color: #666; margin-bottom: 10px;">
+      **目标格式（由 `|` 分隔）:** <br>
+      <code>英文单词 | 拼读 | 中文释义 | 英文例句 | 例句中文</code>
+    </div>
+    <div id="convertFileList"></div>
+    <button class="btn teal-btn" id="startConversionBtn" style="width: 100%; margin-top: 20px;">开始格式转换与智能翻译并下载</button>
+  </div>
+</div>
+
+
+<script>
+// ==================== 永久设置保存 (V1.5.2: 稳定 KEY) ====================
+const VERSION = 'v152'; 
+const SETTINGS_KEY = `vocab_reader_settings_${VERSION}`; 
+const FILE_LIST_KEY = `vocab_reader_file_list_${VERSION}`; 
+const DICTATION_RESULTS_KEY = `vocab_reader_dictation_${VERSION}`; 
+const PROGRESS_KEY = `vocab_reader_progress_${VERSION}`; 
+
+function saveSettings() {
+  const settings = {
+    repeat: document.getElementById('repeat').value,
+    pause: document.getElementById('pause').value,
+    rate: document.getElementById('rate').value,
+    spellRate: document.getElementById('spellRateSlider').value,
+    spellVolume: document.getElementById('spellVolumeSlider').value,
+    voice: document.getElementById('voiceSelect').value,
+    customVoiceName: document.getElementById('customVoiceName').value.trim(),
+    readChinese: document.getElementById('readChinese').checked,
+    readMode: document.getElementById('readMode').value,
+    dictationPrompt: document.getElementById('dictationPrompt').value,
+    lastUrl: document.getElementById('urlInput').value.trim(),
+    baiduAppId: document.getElementById('baiduAppId')?.value.trim() || '',
+    baiduKey: document.getElementById('baiduKey')?.value.trim() || ''
+  };
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+function loadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {};
+    document.getElementById('repeat').value = s.repeat ?? 3;
+    document.getElementById('pause').value = s.pause ?? 2;
+    document.getElementById('rate').value = s.rate ?? 1.0;
+    
+    const spellRate = s.spellRate ?? 1.5;
+    document.getElementById('spellRateSlider').value = spellRate;
+    document.getElementById('spellRateValue').textContent = spellRate;
+    
+    const spellVolume = s.spellVolume ?? 0.9;
+    document.getElementById('spellVolumeSlider').value = spellVolume;
+    document.getElementById('spellVolumeValue').textContent = spellVolume;
+    
+    document.getElementById('readChinese').checked = s.readChinese || false;
+    document.getElementById('readMode').value = s.readMode || 'wordSpell';
+    document.getElementById('dictationPrompt').value = s.dictationPrompt || 'chinese';
+    document.getElementById('customVoiceName').value = s.customVoiceName || ''; 
+    if (s.lastUrl) document.getElementById('urlInput').value = s.lastUrl;
+    
+    if(document.getElementById('baiduAppId')) document.getElementById('baiduAppId').value = s.baiduAppId || '';
+    if(document.getElementById('baiduKey')) document.getElementById('baiduKey').value = s.baiduKey || '';
+
+  } catch(e) { console.error("加载设置失败:", e); }
+}
+
+// ==================== 全局变量 ====================
+let loadedFiles = JSON.parse(localStorage.getItem(FILE_LIST_KEY) || '{}');
+let activeFileKey = '';
+let allWords = [], currentWords = [], currentIndex = 0, isRunning = false, isDictating = false;
+let voices = [];
+let dictationResults = JSON.parse(localStorage.getItem(DICTATION_RESULTS_KEY) || '{}');
+let dictationLog = []; 
+let dictationPromiseResolver = null; 
+
+// ==================== 工具函数 ====================
+/**
+ * 核心变化：使用 CryptoJS 库进行标准的 MD5 签名
+ */
+function md5(str) {
+  if (typeof CryptoJS === 'undefined' || !CryptoJS.MD5) {
+      console.error("CryptoJS MD5 library not loaded!");
+      return ''; // 返回空字符串或抛出错误
+  }
+  return CryptoJS.MD5(str).toString();
+}
+
+function hash(str) {
+  // 保持一个简单的 hash 用于文件名/URL的 Key 生成
+  let h = 0; for (let i = 0; i < str.length; i++) h = Math.imul(31, h) + str.charCodeAt(i) | 0;
+  return 'h_' + h.toString(16).slice(1);
+}
+function spell(word) {
+  return word.split(' ').map(w => w.replace(/[^a-zA-Z]/g,'').split('').join(' ').toUpperCase()).join(' ... ');
+}
+
+function speak(text, rate = 1, volume = 1.0) {
+  return new Promise(resolve => {
+    if (!text.trim()) return resolve();
+    const u = new SpeechSynthesisUtterance(text.trim());
+    u.rate = rate;
+    u.volume = volume;
+    
+    const isChinese = text.match(/[\u4e00-\u9fa5]/);
+    u.lang = isChinese ? 'zh-CN' : 'en-US';
+
+    const customVoiceName = document.getElementById('customVoiceName').value.trim();
+    if (customVoiceName) {
+        const customVoice = voices.find(v => v.name === customVoiceName);
+        if (customVoice) u.voice = customVoice;
+    } else {
+        const sel = document.getElementById('voiceSelect').value;
+        if (sel) {
+          const v = voices.find(v => v.name === sel);
+          u.voice = v;
+        }
+    }
+
+    u.onend = u.onerror = resolve;
+    speechSynthesis.speak(u);
+  });
+}
+
+function setRunningState(running, dictating = false) {
+  isRunning = running;
+  isDictating = dictating;
+  const isDisabled = running;
+  
+  document.getElementById('startReadingBtn').disabled = isDisabled || dictating;
+  document.getElementById('startDictationBtn').disabled = isDisabled || !dictating;
+  document.getElementById('stopBtn').disabled = !isDisabled;
+  
+  const navDisabled = isDisabled || currentWords.length === 0;
+  document.getElementById('prevBtn').disabled = navDisabled || currentIndex === 0;
+  document.getElementById('nextBtn').disabled = navDisabled || currentIndex >= currentWords.length - 1;
+
+  document.getElementById('checkBtn').style.display = isDictating ? '' : 'none';
+  document.getElementById('skipBtn').style.display = isDictating ? '' : 'none';
+  document.getElementById('showResultsBtn').style.display = isDictating && !isRunning ? '' : 'none';
+  document.getElementById('dictationInput').disabled = !isDictating || !isRunning;
+  document.getElementById('dictationArea').style.display = isDictating ? 'block' : 'none';
+
+  document.getElementById('startReadingBtn').disabled = isDisabled || (isDictating && currentWords.length > 0);
+  document.getElementById('startDictationBtn').disabled = isDisabled || (!isDictating && currentWords.length > 0);
+}
+
+// ==================== 文件加载核心逻辑 (略) ====================
+
+function onLoadSuccess(text, key, displayName, type) {
+  const words = [];
+  text.split('\n').forEach(line => {
+    line = line.trim();
+    if (!line || line.startsWith('#')) return;
+    const p = line.split('|').map(x => x.trim());
+
+    if (p[0]) {
+      let zh_word = p[1] || '';
+      let sent_en = p[2] || '';
+      let sent_zh = p[3] || '';
+      
+      if (p.length >= 5) {
+        zh_word = p[2] || '';
+        sent_en = p[3] || '';
+        sent_zh = p[4] || '';
+      }
+      
+      words.push([p[0], zh_word, sent_en, sent_zh]); 
+    }
+  });
+
+  if (words.length === 0) {
+    document.getElementById('status').textContent = '❌ 文件内容为空或格式错误！请检查文件编码和分隔符。';
+    return;
+  }
+
+  loadedFiles[key] = {
+    key: key,
+    displayName: displayName,
+    totalWords: words.length,
+    type: type,
+    words: words
+  };
+  
+  saveFileList();
+  selectActiveFile(key, 'read');
+  document.getElementById('status').textContent = `✅ ${displayName} 加载成功，共 ${words.length} 词！`;
+}
+
+document.getElementById('localBtn').onclick = () => document.getElementById('fileInput').click();
+document.getElementById('fileInput').addEventListener('change', e => {
+  const files = e.target.files;
+  if (files.length === 0) return;
+
+  Array.from(files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const text = ev.target.result.replace(/^\uFEFF/, '');
+      const key = hash(text + file.name + file.size);
+      onLoadSuccess(text, key, file.name, 'local');
+    };
+    reader.onerror = () => {
+      document.getElementById('status').textContent = `❌ 读取文件 ${file.name} 失败！`;
+    };
+    reader.readAsText(file, 'UTF-8');
+  });
+});
+
+document.getElementById('loadUrlBtn').onclick = async () => {
+  let url = document.getElementById('urlInput').value.trim();
+  if (!url) return alert('请粘贴网络地址');
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+
+  document.getElementById('status').textContent = '🌐 尝试加载网络文件...';
+  try {
+    const r = await fetch(url, {cache: "no-cache"});
+    if (!r.ok) {
+      throw new Error(`HTTP 错误: ${r.status}`);
+    }
+    const text = await r.text();
+    const key = url;
+    onLoadSuccess(text, key, '网络文件: ' + url.substring(url.lastIndexOf('/')+1), 'url');
+    saveSettings();
+  } catch(e) {
+    console.error(e);
+    document.getElementById('status').textContent = `❌ 网络加载失败！原因：${e.message || '可能是跨域(CORS)限制'}。请尝试 **GitHub Raw** 链接。`;
+  }
+};
+
+
+// ==================== 文件管理、朗读、默写功能 (略) ====================
+
+function saveFileList() {
+  localStorage.setItem(FILE_LIST_KEY, JSON.stringify(loadedFiles));
+}
+
+function renderFileList() {
+  const listDiv = document.getElementById('fileList');
+  const keys = Object.keys(loadedFiles);
+  
+  if (keys.length === 0) {
+    listDiv.innerHTML = '未加载任何文件';
+    document.getElementById('startReadingBtn').disabled = true;
+    document.getElementById('startDictationBtn').disabled = true;
+    return;
+  }
+
+  listDiv.innerHTML = keys.map(key => {
+    const file = loadedFiles[key];
+    const isActive = key === activeFileKey ? ' active-file' : '';
+    return `
+      <div class="file-item${isActive}" data-key="${key}">
+        <div class="file-name" title="${file.displayName}">
+          ${file.displayName} (${file.totalWords}词)
+        </div>
+        <div class="file-actions">
+          <button class="btn success btn-sm select-btn" data-key="${key}" data-mode="read">朗读</button>
+          <button class="btn green-btn btn-sm select-btn" data-key="${key}" data-mode="dictation">默写</button>
+          <button class="btn danger btn-sm remove-btn" data-key="${key}">移除</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  document.querySelectorAll('.select-btn').forEach(btn => {
+    btn.onclick = (e) => selectActiveFile(e.target.dataset.key, e.target.dataset.mode);
+  });
+  document.querySelectorAll('.remove-btn').forEach(btn => {
+    btn.onclick = (e) => removeFile(e.target.dataset.key);
+  });
+}
+
+function selectActiveFile(key, mode = 'read') {
+  if (isRunning) return alert('请先停止当前任务');
+  activeFileKey = key;
+  const file = loadedFiles[key];
+  if (!file) return;
+
+  allWords = file.words;
+  
+  // 清理 UI
+  document.getElementById('resultsCard').style.display = 'none';
+  document.getElementById('dictationInput').value = '';
+  document.getElementById('dictationArea').style.display = mode === 'dictation' ? 'block' : 'none';
+  
+  const savedIndex = loadProgress(key);
+  currentIndex = savedIndex < allWords.length ? savedIndex : 0;
+
+  applyRange(true);
+  displayWord(currentIndex);
+  renderFileList();
+
+  setRunningState(false, mode === 'dictation');
+  
+  document.getElementById('activeFileInfo').innerHTML = `
+    🎯 当前操作文件: <strong>${file.displayName}</strong> | 总词数: ${file.totalWords} | 模式: <strong>${mode === 'dictation' ? '默写' : '朗读'}</strong>
+  `;
+}
+
+function removeFile(key) {
+  if (confirm('确定移除该文件吗? 进度也将被清空。')) {
+    delete loadedFiles[key];
+    localStorage.removeItem(PROGRESS_KEY + '_' + key);
+    saveFileList();
+    if (activeFileKey === key) {
+      activeFileKey = '';
+      allWords = [];
+      currentWords = [];
+      currentIndex = 0;
+      document.getElementById('activeFileInfo').innerHTML = '未选择操作文件';
+      displayWord(-1);
+    }
+    renderFileList();
+    setRunningState(false, false);
+  }
+}
+
+function applyRange(resetIdx = false) {
+  const start = parseInt(document.getElementById('startIndex').value) || 1;
+  const end = parseInt(document.getElementById('endIndex').value) || allWords.length;
+  
+  const effectiveStart = Math.max(1, start);
+  const effectiveEnd = Math.min(allWords.length, end);
+  
+  if (effectiveStart > effectiveEnd) {
+    document.getElementById('status').textContent = "⚠️ 范围错误，已重置为全部词汇。";
+    document.getElementById('startIndex').value = 1;
+    document.getElementById('endIndex').value = allWords.length;
+    currentWords = allWords;
+  } else {
+    currentWords = allWords.slice(effectiveStart - 1, effectiveEnd);
+  }
+
+  if (resetIdx) {
+    currentIndex = 0;
+    if (currentWords.length > 0) {
+      const savedIndex = loadProgress(activeFileKey);
+      const startOffset = effectiveStart - 1;
+      const relativeIndex = savedIndex - startOffset;
+      
+      if (relativeIndex >= 0 && relativeIndex < currentWords.length) {
+        currentIndex = relativeIndex;
+      }
+    }
+  }
+
+  document.getElementById('startIndex').value = effectiveStart;
+  document.getElementById('endIndex').value = effectiveEnd;
+
+  updateProgressDisplay(currentIndex, currentWords.length);
+  displayWord(currentIndex);
+}
+
+function saveProgress(key, idx) {
+  const start = parseInt(document.getElementById('startIndex').value) || 1;
+  const absIndex = idx + (start - 1);
+  localStorage.setItem(PROGRESS_KEY + '_' + key, absIndex);
+}
+
+function loadProgress(key) {
+  return parseInt(localStorage.getItem(PROGRESS_KEY + '_' + key) || '0');
+}
+
+function updateProgressDisplay(idx, total, repeatNum = 1, currentRepeat = 1) {
+  const start = parseInt(document.getElementById('startIndex').value) || 1;
+  const currentAbsIndex = (idx < 0 ? 0 : idx) + (start - 1); 
+  
+  let text = `进度: ${idx + 1}/${total} (总第 ${currentAbsIndex + 1}/${allWords.length} 词)`;
+  
+  if (isRunning && repeatNum > 1) {
+    const modeText = isDictating ? '提示重复' : '朗读重复';
+    text += ` | ${modeText}: ${currentRepeat}/${repeatNum}`;
+  }
+  document.getElementById('progress').textContent = text;
+}
+
+function displayWord(idx) {
+  const wordDisplay = document.getElementById('word');
+  const spellingDisplay = document.getElementById('spelling');
+  const chineseDisplay = document.getElementById('chinese');
+  const sentenceDisplay = document.getElementById('sentence');
+  const sentenceZhDisplay = document.getElementById('sentence_zh');
+  const promptMode = document.getElementById('dictationPrompt').value; 
+
+  document.querySelectorAll('.current-highlight').forEach(el => el.classList.remove('current-highlight'));
+
+  if (idx >= 0 && idx < currentWords.length) {
+    const [word, chinese, sentence, sentence_zh] = currentWords[idx];
+    
+    // 默写模式运行时处理显示 
+    if (isRunning && isDictating) {
+      wordDisplay.textContent = '-'; 
+      spellingDisplay.textContent = '-';
+      sentenceDisplay.textContent = '-';
+      
+      chineseDisplay.textContent = chinese || '（无中文释义）'; // 默写时总是显示中文释义
+      sentenceZhDisplay.textContent = sentence_zh || '-';
+      
+      if (promptMode === 'chinese') {
+        chineseDisplay.classList.add('current-highlight'); // 提示中文，高亮中文释义
+      } else {
+        chineseDisplay.classList.remove('current-highlight'); // 提示英文，中文释义不需高亮
+      }
+      
+    } else {
+      // 朗读模式或停止状态下正常显示
+      wordDisplay.textContent = word;
+      spellingDisplay.textContent = spell(word);
+      chineseDisplay.textContent = chinese || '-';
+      sentenceDisplay.textContent = sentence || '-';
+      sentenceZhDisplay.textContent = sentence_zh || '-';
+      
+      if (isRunning) {
+        wordDisplay.classList.add('current-highlight');
+      }
+    }
+  } else {
+    wordDisplay.textContent = '-';
+    spellingDisplay.textContent = '-';
+    chineseDisplay.textContent = '-';
+    sentenceDisplay.textContent = '-';
+    sentenceZhDisplay.textContent = '-';
+    document.getElementById('progress').textContent = `✅ 任务完成！共 ${currentWords.length} 词。`;
+    setRunningState(false, isDictating);
+  }
+}
+
+async function readCurrentWord() {
+  if (!activeFileKey || currentIndex >= currentWords.length) return false;
+
+  const [word, chinese, sentence, sentence_zh] = currentWords[currentIndex];
+  const repeat = parseInt(document.getElementById('repeat').value) || 1;
+  const pause = parseFloat(document.getElementById('pause').value) || 2;
+  const rate = parseFloat(document.getElementById('rate').value) || 1.0;
+  const spellRate = parseFloat(document.getElementById('spellRateSlider').value) || 1.5; 
+  const spellVolume = parseFloat(document.getElementById('spellVolumeSlider').value) || 0.9;
+  const readChinese = document.getElementById('readChinese').checked;
+  const readMode = document.getElementById('readMode').value;
+
+  for (let r = 1; r <= repeat; r++) {
+    if (!isRunning) return false;
+
+    updateProgressDisplay(currentIndex, currentWords.length, repeat, r);
+    displayWord(currentIndex);
+
+    if (readMode === 'full' || readMode === 'wordSpell' || readMode === 'wordOnly') {
+      await speak(word, rate, 1.0);
+      await new Promise(r => setTimeout(r, 500)); 
+    }
+    
+    if (readMode === 'full' || readMode === 'wordSpell') {
+      const letters = word.replace(/[^a-zA-Z]/g, '').toUpperCase().split('');
+      for (let i = 0; i < letters.length; i++) {
+          if (!isRunning) return false;
+          await speak(letters[i], spellRate, spellVolume); 
+          await new Promise(r => setTimeout(r, 200)); 
+      }
+      if (letters.length > 0) {
+        await speak(word, rate, 1.0); 
+      }
+    }
+
+    if (readMode === 'full') {
+      if (readChinese && chinese) await speak(chinese, 1.0, 1.0);
+      if (sentence) await speak(sentence, rate * 0.9, 1.0);
+      if (readChinese && sentence_zh) await speak(sentence_zh, 1.0, 1.0);
+    }
+
+    if (r < repeat) {
+      await new Promise(r => setTimeout(r, pause * 1000));
+    }
+  }
+
+  return true;
+}
+
+async function startReading() {
+  if (!activeFileKey || currentWords.length === 0) {
+    return document.getElementById('status').textContent = '⚠️ 请先加载文件并选择文件！';
+  }
+  speechSynthesis.cancel();
+  setRunningState(true, false);
+  dictationLog = [];
+  
+  while (isRunning && currentIndex < currentWords.length) {
+    const success = await readCurrentWord();
+    if (success) {
+      saveProgress(activeFileKey, currentIndex);
+      currentIndex++;
+      await new Promise(r => setTimeout(r, parseFloat(document.getElementById('pause').value) * 1000)); 
+    } else {
+      break; 
+    }
+  }
+
+  if (!isRunning) {
+    document.getElementById('status').textContent = '⏸️ 已暂停。';
+  } else {
+    document.getElementById('status').textContent = '✅ 朗读任务完成！';
+  }
+  setRunningState(false, false);
+  displayWord(currentIndex);
+}
+document.getElementById('startReadingBtn').onclick = startReading;
+
+
+function waitForDictationInput() {
+  return new Promise(resolve => {
+    dictationPromiseResolver = resolve;
+    const input = document.getElementById('dictationInput');
+    input.focus();
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        document.getElementById('checkBtn').click();
+      }
+    };
+  });
+}
+
+document.getElementById('checkBtn').onclick = () => {
+  if (dictationPromiseResolver) {
+    dictationPromiseResolver(document.getElementById('dictationInput').value.trim());
+    dictationPromiseResolver = null;
+  }
+};
+
+document.getElementById('skipBtn').onclick = () => {
+  if (dictationPromiseResolver) {
+    document.getElementById('status').textContent = '⏩ 跳过当前单词...';
+    speechSynthesis.cancel();
+    dictationPromiseResolver(''); 
+    dictationPromiseResolver = null;
+  }
+};
+
+async function startDictation() {
+  if (!activeFileKey || currentWords.length === 0) {
+    return document.getElementById('status').textContent = '⚠️ 请先加载文件并选择文件！';
+  }
+  
+  speechSynthesis.cancel();
+  setRunningState(true, true);
+  document.getElementById('resultsCard').style.display = 'none';
+  document.getElementById('dictationInput').value = '';
+  document.getElementById('status').textContent = '📝 默写模式已激活。';
+  dictationLog = [];
+  
+  const repeatLimit = parseInt(document.getElementById('repeat').value) || 1; 
+  const pause = parseFloat(document.getElementById('pause').value) || 2;
+  
+  while (isRunning && currentIndex < currentWords.length) {
+    const [word, chinese] = currentWords[currentIndex];
+    const promptMode = document.getElementById('dictationPrompt').value;
+    
+    let promptText = '';
+    if (promptMode === 'chinese' && chinese) {
+      promptText = chinese;
+    } else if (promptMode === 'english') {
+      promptText = word;
+    }
+
+    let isCorrect = false;
+    let userInput = '';
+
+    for (let r = 1; r <= repeatLimit; r++) {
+      if (!isRunning) return;
+      
+      updateProgressDisplay(currentIndex, currentWords.length, repeatLimit, r);
+      displayWord(currentIndex); 
+      
+      if (promptText) {
+        await speak(promptText, 1.0, 1.0);
+      }
+      
+      if (r < repeatLimit) {
+        await new Promise(r => setTimeout(r, pause * 1000)); 
+      }
+    }
+
+    document.getElementById('status').textContent = '请在下方输入框输入单词...';
+    document.getElementById('dictationInput').value = '';
+    document.getElementById('dictationInput').placeholder = `请输入单词 (${word.length}个字母)`;
+    userInput = await waitForDictationInput();
+    
+    const cleanedInput = userInput.replace(/[^a-zA-Z]/g, '').toLowerCase();
+    const cleanedWord = word.replace(/[^a-zA-Z]/g, '').toLowerCase();
+
+    if (cleanedInput === cleanedWord) {
+      isCorrect = true;
+      document.getElementById('status').textContent = `✅ 正确！`;
+    } else if (userInput === '') {
+      document.getElementById('status').textContent = `跳过，答案是 ${word}。`;
+    } else {
+      document.getElementById('status').textContent = `❌ 错误，答案是 ${word}。`;
+      await speak(`Incorrect. The word is ${word}.`, 1.0, 1.0);
+    }
+
+    dictationLog.push({
+      index: currentIndex,
+      word: word,
+      chinese: chinese,
+      userInput: userInput,
+      correct: isCorrect
+    });
+    
+    saveProgress(activeFileKey, currentIndex);
+    currentIndex++;
+    await new Promise(r => setTimeout(r, 2000));
+  }
+
+  if (!isRunning) {
+    document.getElementById('status').textContent = '⏸️ 已暂停。';
+  } else {
+    document.getElementById('status').textContent = '✅ 默写任务完成！';
+  }
+  setRunningState(false, true);
+  displayWord(-1); 
+  // showDictationResults(); 
+}
+document.getElementById('startDictationBtn').onclick = startDictation;
+
+
+// [格式转换功能和百度翻译 API]
+
+/**
+ * 核心变化：使用 MD5 库进行签名
+ */
+async function translateText(text) {
+    const appId = document.getElementById('baiduAppId').value.trim();
+    const key = document.getElementById('baiduKey').value.trim();
+    
+    if (!appId || !key) {
+        throw new Error("请在弹窗中填写百度翻译 App ID 和 Secret Key!");
+    }
+    
+    if (typeof CryptoJS === 'undefined' || !CryptoJS.MD5) {
+         throw new Error("MD5 库未加载！请确保你的网络连接正常，以便加载 MD5 库。");
+    }
+
+    const salt = (new Date).getTime();
+    // 使用标准的 MD5 算法进行签名: appid+q+salt+密钥
+    const signString = appId + text + salt + key;
+    const sign = md5(signString); 
+    
+    const url = `https://fanyi-api.baidu.com/api/trans/vip/translate?q=${encodeURIComponent(text)}&from=en&to=zh&appid=${appId}&salt=${salt}&sign=${sign}`;
+
+    try {
+        const r = await fetch(url, { method: 'GET', mode: 'cors' });
+        const data = await r.json();
+        
+        if (data.error_code) {
+            console.error("百度翻译错误：", data);
+            throw new Error(`百度翻译 API 错误: ${data.error_code} - ${data.error_msg}`);
+        }
+
+        if (data.trans_result && data.trans_result.length > 0) {
+            return data.trans_result[0].dst;
+        }
+        return '';
+    } catch(e) {
+        console.error("翻译请求失败:", e);
+        throw e;
+    }
+}
+
+
+const convertModal = document.getElementById('convertModal');
+document.getElementById('formatConvertBtn').onclick = () => {
+    const convertFileListDiv = document.getElementById('convertFileList');
+    convertFileListDiv.innerHTML = '';
+    const keys = Object.keys(loadedFiles);
+    
+    if (keys.length === 0) {
+        convertFileListDiv.innerHTML = '<p>请先加载文件。</p>';
+    } else {
+        keys.forEach(key => {
+            const file = loadedFiles[key];
+            const item = document.createElement('div');
+            item.innerHTML = `<label><input type="checkbox" name="convertFile" value="${key}"> ${file.displayName} (${file.totalWords}词)</label>`;
+            convertFileListDiv.appendChild(item);
+        });
+    }
+    convertModal.style.display = 'block';
+};
+
+document.getElementById('closeConvertModal').onclick = () => {
+    convertModal.style.display = 'none';
+};
+
+window.onclick = (event) => {
+    if (event.target === convertModal) {
+        convertModal.style.display = 'none';
+    }
+};
+
+document.getElementById('startConversionBtn').onclick = async () => {
+    const selectedKeys = Array.from(document.querySelectorAll('#convertFileList input[name="convertFile"]:checked')).map(cb => cb.value);
+    
+    if (selectedKeys.length === 0) {
+        return alert('请选择至少一个要转换的文件。');
+    }
+    
+    const appId = document.getElementById('baiduAppId').value.trim();
+    const key = document.getElementById('baiduKey').value.trim();
+    
+    if (!appId || !key) {
+        if (!confirm("App ID 或 Secret Key 为空，无法进行自动翻译补全。是否继续仅进行格式转换？")) {
+            return;
+        }
+    }
+
+
+    document.getElementById('status').textContent = '⏳ 正在进行格式转换和智能翻译，请稍候...';
+    let translatedCount = 0;
+
+    for (const key of selectedKeys) {
+        const file = loadedFiles[key];
+        if (!file || !file.words) continue;
+
+        let output = [];
+        let translationFailed = false;
+
+        for (let i = 0; i < file.words.length; i++) {
+            let [word, chinese, sentence, sentence_zh] = file.words[i];
+            
+            if (translationFailed || (!appId || !key)) {
+                 // 翻译失败或密钥缺失，跳过翻译
+            } else if (sentence && !sentence_zh) {
+                try {
+                    // 调用翻译 API
+                    sentence_zh = await translateText(sentence);
+                    translatedCount++;
+                    
+                    document.getElementById('status').textContent = `✅ 翻译进度: 正在处理 ${file.displayName} (第 ${i + 1}/${file.words.length} 词)`;
+                    
+                    await new Promise(r => setTimeout(r, 500)); 
+                } catch (e) {
+                    console.error(`翻译 ${sentence} 失败:`, e.message);
+                    sentence_zh = `[翻译失败: ${e.message}]`;
+                    translationFailed = true; // 翻译失败，停止对后续词进行翻译，避免触发API限制
+                    alert(`翻译失败：${e.message}。后续词汇将跳过翻译。`);
+                }
+            }
+
+            const pinyin = word; 
+            const line = `${word} | ${pinyin} | ${chinese || ''} | ${sentence || ''} | ${sentence_zh || ''}`;
+            output.push(line);
+        }
+
+        const content = output.join('\n');
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `translated_${file.displayName.replace(/\.txt$/, '')}_V152.txt`;
+        link.click();
+    }
+    
+    document.getElementById('status').textContent = `✅ 成功转换并下载了 ${selectedKeys.length} 个文件！共调用翻译 ${translatedCount} 次。`;
+    convertModal.style.display = 'none';
+    saveSettings(); 
+};
+
+
+// [共享控制和初始化函数]
+document.getElementById('stopBtn').onclick = () => {
+  isRunning = false;
+  speechSynthesis.cancel();
+  setRunningState(false, isDictating);
+  document.getElementById('status').textContent = '⏸️ 已手动停止。';
+};
+
+document.getElementById('resetBtn').onclick = () => {
+  if (!activeFileKey) return;
+  if (confirm('确定重置当前文件进度吗？')) {
+    currentIndex = 0;
+    localStorage.removeItem(PROGRESS_KEY + '_' + activeFileKey);
+    applyRange(true);
+    displayWord(currentIndex);
+    setRunningState(false, isDictating);
+    document.getElementById('status').textContent = '进度已重置。';
+  }
+};
+
+document.getElementById('prevBtn').onclick = () => {
+  if (isRunning) return;
+  currentIndex = Math.max(0, currentIndex - 1);
+  saveProgress(activeFileKey, currentIndex);
+  displayWord(currentIndex);
+  updateProgressDisplay(currentIndex, currentWords.length);
+  setRunningState(false, isDictating);
+};
+
+document.getElementById('nextBtn').onclick = () => {
+  if (isRunning) return;
+  currentIndex = Math.min(currentWords.length - 1, currentIndex + 1);
+  saveProgress(activeFileKey, currentIndex);
+  displayWord(currentIndex);
+  updateProgressDisplay(currentIndex, currentWords.length);
+  setRunningState(false, isDictating);
+};
+
+
+window.addEventListener('load', () => {
+  loadSettings(); 
+  renderFileList();
+  
+  const firstFileKey = Object.keys(loadedFiles)[0];
+  if (firstFileKey) {
+    let currentMode = 'read'; 
+    try {
+        const fileInfoDiv = document.getElementById('activeFileInfo').innerHTML;
+        currentMode = fileInfoDiv.includes('默写') ? 'dictation' : 'read';
+    } catch(e) {/* ignore */}
+    
+    selectActiveFile(firstFileKey, currentMode);
+  } else {
+    document.getElementById('progress').textContent = "请先加载文件。";
+  }
+
+  document.querySelectorAll('input, select, input[type=range]').forEach(el => {
+    el.addEventListener('change', saveSettings);
+    el.addEventListener('input', () => setTimeout(saveSettings, 300));
+  });
+
+  document.getElementById('spellRateSlider').addEventListener('input', (e) => {
+    document.getElementById('spellRateValue').textContent = e.target.value;
+  });
+  document.getElementById('spellVolumeSlider').addEventListener('input', (e) => {
+    document.getElementById('spellVolumeValue').textContent = e.target.value;
+  });
+
+  ['startIndex','endIndex'].forEach(id => {
+    document.getElementById(id).addEventListener('change', () => { 
+      if(activeFileKey && !isRunning) applyRange(true); 
+    });
+  });
+});
+
+
+// [音色加载函数]
+function loadVoices() {
+  voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('en-') || v.lang.startsWith('zh-'));
+  const voiceSelect = document.getElementById('voiceSelect');
+  
+  if (voices.length > 0) {
+    voiceSelect.innerHTML = '';
+    voices.forEach(voice => {
+      const option = document.createElement('option');
+      option.textContent = `${voice.name} (${voice.lang})`;
+      option.value = voice.name;
+      voiceSelect.appendChild(option);
+    });
+    
+    const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+    if (s.voice) {
+      voiceSelect.value = s.voice;
+    }
+  } else {
+    voiceSelect.innerHTML = '<option>未检测到音色</option>';
+  }
+}
+speechSynthesis.onvoiceschanged = loadVoices;
+setTimeout(loadVoices, 300);
+</script>
+</body>
+</html>
